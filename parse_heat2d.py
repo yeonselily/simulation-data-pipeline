@@ -76,7 +76,7 @@ def export_long_csv(timesteps, grids, out_csv):
 
 
 def main():
-    in_file = "sample.txt"  # change to your filename
+    in_file = "log.txt"  # change to your filename
     timesteps, grids = parse_heat2d(in_file, grid_h=100, grid_w=100)
 
     # Save structured data

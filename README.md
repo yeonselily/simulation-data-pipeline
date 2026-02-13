@@ -17,7 +17,18 @@ Max size as of MASS v0.7.2, this implementation as of 5/10/2024, is 3083.
 4. make build-simviz 
 5. ./bin/simviz heat2d.viz 
 
-
-
-./run.sh 
 sh run.sh 
+./run.sh 
+
+
+You may need to install plotly. 
+run this command: 
+
+python3 -m pip install 
+plotly 
+
+python3 -m pip install --user plotly
+
+
+And then : 
+python3 visualize_plotly.py
