@@ -1,0 +1,1 @@
+./bin/Heat2D_PlaceV2 --interval 1 --verbose   > log.txt                                                           
