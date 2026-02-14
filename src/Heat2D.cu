@@ -86,7 +86,7 @@ void Heat2D::displayResults(simviz::RGBFile &vizFile, mass::Places *places, int 
 
 			// double temp = ((Metal*) retVals[rmi])->getTemp();
 			double temp = retVals[(rmi * 2 + phase[rmi])];
-			ss << (temp / 2) << " ";
+			ss << temp << " ";
 
 			vizFile.write((char *)getRGB(temp), simviz::NumRGBBytes);
 		}
@@ -124,7 +124,7 @@ void Heat2D::display(mass::Places *places, int time, int *placesSize)
 
 			// double temp = ((Metal*) retVals[rmi])->getTemp();
 			double temp = retVals[(rmi * 2 + phase[rmi])];
-			ss << (temp / 2) << " ";
+			ss << temp << " ";
 		}
 
 		ss << "\n";
