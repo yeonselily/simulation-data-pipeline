@@ -5,6 +5,9 @@
 make develop LLVM_PREBUILD_DOWNLOAD_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz
 make build
 ```
+Notes:
+- `make develop` is one-time setup (rerun only if toolchain/deps change).
+- Rebuild with `make build` only when C++/CUDA sources change; skip for Python/README edits.
 
 ## 2) Run the simulation (manual)
 Use `--help` to see parameters. You must use `--verbose` to print the grid.
