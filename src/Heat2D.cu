@@ -1,5 +1,6 @@
 #include <iostream>
 #include <sstream>
+#include <iomanip>
 #include <vector>
 #include <stdlib.h>
 
@@ -62,6 +63,9 @@ void Heat2D::displayResults(simviz::RGBFile &vizFile, mass::Places *places, int 
 	mass::logger::debug("Entering Heat2d::displayResults");
 	std::ostringstream ss;
 
+	// set precision for temperature values
+	ss << std::fixed << std::setprecision(3); 
+
 	ss << "time = " << time << "\n";
 	// mass::Place ** retVals = places->getElements(); //refreshes places here
 	double *retVals = places->downloadAttributes<double>(Metal::ATTRIBUTE::TEMPERATURE, 2);
@@ -82,7 +86,7 @@ void Heat2D::displayResults(simviz::RGBFile &vizFile, mass::Places *places, int 
 
 			// double temp = ((Metal*) retVals[rmi])->getTemp();
 			double temp = retVals[(rmi * 2 + phase[rmi])];
-			ss << floor(temp / 2) << " ";
+			ss << (temp / 2) << " ";
 
 			vizFile.write((char *)getRGB(temp), simviz::NumRGBBytes);
 		}
@@ -99,6 +103,7 @@ void Heat2D::display(mass::Places *places, int time, int *placesSize)
 {
 	mass::logger::debug("Entering Heat2d::displayResults");
 	std::ostringstream ss;
+	ss << std::fixed << std::setprecision(3);
 
 	ss << "time = " << time << "\n";
 	double *retVals = places->downloadAttributes<double>(Metal::ATTRIBUTE::TEMPERATURE, 2); // refreshes places here
@@ -119,7 +124,7 @@ void Heat2D::display(mass::Places *places, int time, int *placesSize)
 
 			// double temp = ((Metal*) retVals[rmi])->getTemp();
 			double temp = retVals[(rmi * 2 + phase[rmi])];
-			ss << floor(temp / 2) << " ";
+			ss << (temp / 2) << " ";
 		}
 
 		ss << "\n";

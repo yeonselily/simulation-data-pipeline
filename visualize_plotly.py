@@ -6,6 +6,12 @@ data = np.load("heat2d_grids.npz")
 timesteps = data["timesteps"]
 grids = data["grids"]   # shape (T,H,W)
 
+# Downsample frames for faster visualization.
+stride = 5
+if stride > 1:
+    timesteps = timesteps[::stride]
+    grids = grids[::stride]
+
 # Create frames
 frames = []
 
