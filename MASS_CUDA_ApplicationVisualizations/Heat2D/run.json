@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "run": {
+    "app_name": "Heat2D",
+    "framework": "MASS",
+    "backend": "CUDA",
+    "dimensions": { "type": "grid2d", "width": 100, "height": 100 },
+    "value_type": "float32",
+    "value_range": { "min": 0.0, "max": 100.0 },
+    "timesteps": { "start": 0, "end": 3000, "count": 3001 },
+    "state_type": "grid2d",
+    "notes": "Raw output interleaves grid snapshots with CUDA debug logs and performance metrics."
+  },
+  "input": {
+    "raw_log": "log.txt"
+  },
+  "outputs": {
+    "grid_npz": "heat2d_grids.npz",
+    "grid_long_csv": "heat2d_long.csv"
+  },
+  "visualization": {
+    "frame_stride": 5,
+    "color_scale": "Viridis"
+  }
+}
