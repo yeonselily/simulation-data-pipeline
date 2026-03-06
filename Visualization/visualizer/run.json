@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "run": {
+    "app_name": "SugarScape",
+    "framework": "MASS",
+    "backend": "CPU",
+    "dimensions": {
+      "type": "grid2d",
+      "width": 32,
+      "height": 32
+    },
+    "value_type": "float32",
+    "value_range": {
+      "min": 0.0,
+      "max": 4.0
+    },
+    "timesteps": {
+      "start": 0,
+      "end": 19,
+      "count": 20
+    },
+    "state_type": "grid2d",
+    "state_semantics": "sugarCount",
+    "notes": "Source meta declares total timesteps=20. Parsed 20 GRID frames."
+  },
+  "input": {
+    "folder": "../input_files",
+    "meta_csv": "../input_files/serial_META.csv",
+    "prefix": "serial",
+    "run_id": ""
+  },
+  "outputs": {
+    "grid_npz": "state.npz",
+    "grid_long_csv": "grid_long.csv",
+    "entities_csv": "entities_long.csv",
+    "metrics_csv": "metrics.csv",
+    "viz_params_csv": "../input_files/visualization_parameters.csv"
+  },
+  "visualization": {
+    "frame_stride": 1,
+    "show_entities": true,
+    "show_metrics": true
+  }
+}
