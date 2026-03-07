@@ -1,23 +1,95 @@
 import json
+import csv
 import numpy as np
 import plotly.graph_objects as go
 
 '''
-Current script needs: state.npz
+Current script uses:
+    - run.json
+    - state.npz
+    - entities_long.csv (optional, only when agent overlay is enabled)
 
-Future cleaner version should use: state.npz + run.json
+visualize_plotly loads processed data and renders an animated Plotly heatmap.
 
-If you later overlay agents, it may also use: entities_long.csv
+What it currently supports:
+    - grid-based animation from state.npz
+    - conditional agent overlay from entities_long.csv
+    - timestep slider and play/pause controls
+    - configuration-driven loading through run.json
 
-visualize_plotly loads processed data and renders the animated heatmap. 
+How agent overlay works:
+    - Agents are only rendered if:
+        1. visualization.show_entities == true in run.json
+        2. outputs.entities_csv is present and non-empty in run.json
 
-Note: This script needs to be updated to visualize agents, hearts, side metrics, and grid lines from visualization parameters. 
-Now, it only visualizes sugar grid values over time. 
+This allows the same script to support:
+    - grid-only simulations (e.g., Heat2D)
+    - grid + agents simulations (e.g., SugarScape)
+
+What it does not yet support:
+    - fertility heart icons as separate symbols
+    - side metrics from TIMESTEPCONSTANTS
+    - grid line styling / color gradients from visualization_parameters.csv
+    - richer legend / styling rules beyond the current built-in agent coloring
 '''
 
 def load_run_config(path="run.json"):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+def load_entities_csv(path):
+    entities_by_t = {}
+    with open(path, "r", newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            t = int(row["timestep"])
+            entities_by_t.setdefault(t, []).append({
+                "id": int(row["id"]),
+                "x": int(row["x"]),
+                "y": int(row["y"]),
+                "wealth": float(row["wealth"]),
+                "age": int(row["age"]),
+                "deathAge": int(row["deathAge"]),
+                "isMale": int(row["isMale"]),
+                "isFertile": int(row["isFertile"]),
+            })
+    return entities_by_t
+
+def make_agent_trace(agent_rows):
+    xs = [a["x"] for a in agent_rows]
+    ys = [a["y"] for a in agent_rows]
+
+    colors = []
+    for a in agent_rows:
+        if a["isFertile"] == 1 and a["isMale"] == 1:
+            colors.append("blue")
+        elif a["isFertile"] == 1 and a["isMale"] == 0:
+            colors.append("red")
+        elif a["isFertile"] == 0 and a["isMale"] == 1:
+            colors.append("lightblue")
+        else:
+            colors.append("pink")
+
+    hover_text = [
+        f"id={a['id']}<br>"
+        f"wealth={a['wealth']}<br>"
+        f"age={a['age']}<br>"
+        f"deathAge={a['deathAge']}<br>"
+        f"isMale={a['isMale']}<br>"
+        f"isFertile={a['isFertile']}"
+        for a in agent_rows
+    ]
+
+    return go.Scatter(
+        x=xs,
+        y=ys,
+        mode="markers",
+        name="Agents",
+        marker=dict(size=8, color=colors, line=dict(width=1, color="black")),
+        text=hover_text,
+        hoverinfo="text",
+        showlegend=False
+    )
 
 
 def main():
@@ -26,34 +98,57 @@ def main():
     npz_path = cfg["outputs"]["grid_npz"]
     stride = int(cfg.get("visualization", {}).get("frame_stride", 1))
 
+    show_entities = bool(cfg.get("visualization", {}).get("show_entities", False))
+    entities_path = cfg["outputs"].get("entities_csv", "")
+    use_entities = show_entities and bool(entities_path)
+
     data = np.load(npz_path)
-
-    if "timesteps" not in data or "grids" not in data:
-        raise ValueError(f"{npz_path} must contain 'timesteps' and 'grids' arrays")
-
     timesteps = data["timesteps"]
-    grids = data["grids"]   # expected shape (T,H,W)
+    grids = data["grids"]
 
     if stride > 1:
         timesteps = timesteps[::stride]
         grids = grids[::stride]
 
-    frames = []
-    for i in range(len(timesteps)):
-        frames.append(
-            go.Frame(
-                data=[go.Heatmap(z=grids[i])],
-                name=str(int(timesteps[i]))
-            )
-        )
+    entities_by_t = load_entities_csv(entities_path) if use_entities else {}
 
-    fig = go.Figure(
-        data=[go.Heatmap(z=grids[0])],
-        frames=frames
-    )
+    zmin = float(cfg["run"].get("value_range", {}).get("min", np.nanmin(grids)))
+    zmax = float(cfg["run"].get("value_range", {}).get("max", np.nanmax(grids)))
+
+    frames = []
+    for i, t in enumerate(timesteps):
+        traces = [
+            go.Heatmap(
+                z=grids[i],
+                zmin=zmin,
+                zmax=zmax,
+                colorbar=dict(title=cfg["run"].get("state_semantics", "Value"))
+            )
+        ]
+
+        if use_entities:
+            traces.append(make_agent_trace(entities_by_t.get(int(t), [])))
+
+        frames.append(go.Frame(data=traces, name=str(int(t))))
+
+    initial_traces = [
+        go.Heatmap(
+            z=grids[0],
+            zmin=zmin,
+            zmax=zmax,
+            colorbar=dict(title=cfg["run"].get("state_semantics", "Value"))
+        )
+    ]
+
+    if use_entities:
+        initial_traces.append(make_agent_trace(entities_by_t.get(int(timesteps[0]), [])))
+
+    fig = go.Figure(data=initial_traces, frames=frames)
 
     fig.update_layout(
         title=cfg["run"].get("app_name", "Visualization"),
+        xaxis=dict(title="x"),
+        yaxis=dict(title="y", autorange="reversed"),
         sliders=[{
             "steps": [
                 {
@@ -63,10 +158,28 @@ def main():
                 }
                 for t in timesteps
             ]
+        }],
+        updatemenus=[{
+            "type": "buttons",
+            "buttons": [
+                {
+                    "label": "Play",
+                    "method": "animate",
+                    "args": [None, {"frame": {"duration": 300, "redraw": True}, "fromcurrent": True}]
+                },
+                {
+                    "label": "Pause",
+                    "method": "animate",
+                    "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]
+                }
+            ]
         }]
     )
 
-    fig.show()
+    # fig.show()
+    out_html = "visualization.html"
+    fig.write_html(out_html, auto_open=False)
+    print(f"Wrote {out_html}")
 
 
 if __name__ == "__main__":
