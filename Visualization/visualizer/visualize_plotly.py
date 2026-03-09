@@ -61,6 +61,12 @@ def make_agent_trace(agent_rows):
 
     colors = []
     for a in agent_rows:
+        '''
+        - Blue dot → male that can reproduce
+        - Red dot → female that can reproduce
+        - Light blue dot → male too young/old to reproduce
+        - Pink dot → female too young/old to reproduce
+        '''
         if a["isFertile"] == 1 and a["isMale"] == 1:
             colors.append("blue")
         elif a["isFertile"] == 1 and a["isMale"] == 0:
@@ -71,12 +77,11 @@ def make_agent_trace(agent_rows):
             colors.append("pink")
 
     hover_text = [
-        f"id={a['id']}<br>"
-        f"wealth={a['wealth']}<br>"
-        f"age={a['age']}<br>"
-        f"deathAge={a['deathAge']}<br>"
-        f"isMale={a['isMale']}<br>"
-        f"isFertile={a['isFertile']}"
+        f"<b>Agent {a['id']}</b><br>"
+        f"Wealth: {a['wealth']}<br>"
+        f"Age: {a['age']} / {a['deathAge']}<br>"
+        f"Sex: {'Male' if a['isMale'] == 1 else 'Female'}<br>"
+        f"Fertile: {'Yes' if a['isFertile'] == 1 else 'No'}"
         for a in agent_rows
     ]
 
@@ -94,6 +99,7 @@ def make_agent_trace(agent_rows):
 
 def main():
     cfg = load_run_config("run.json")
+    print("Loaded config:", json.dumps(cfg, indent=2))
 
     npz_path = cfg["outputs"]["grid_npz"]
     stride = int(cfg.get("visualization", {}).get("frame_stride", 1))
@@ -105,12 +111,14 @@ def main():
     data = np.load(npz_path)
     timesteps = data["timesteps"]
     grids = data["grids"]
+    print(f"Loaded NPZ with timesteps {timesteps.shape} and grids {grids.shape}")
 
     if stride > 1:
         timesteps = timesteps[::stride]
         grids = grids[::stride]
 
     entities_by_t = load_entities_csv(entities_path) if use_entities else {}
+    print(f"Loaded entities for {len(entities_by_t)} timesteps")
 
     zmin = float(cfg["run"].get("value_range", {}).get("min", np.nanmin(grids)))
     zmax = float(cfg["run"].get("value_range", {}).get("max", np.nanmax(grids)))
@@ -130,6 +138,7 @@ def main():
             traces.append(make_agent_trace(entities_by_t.get(int(t), [])))
 
         frames.append(go.Frame(data=traces, name=str(int(t))))
+    print(f"Constructed {len(frames)} frames for animation")
 
     initial_traces = [
         go.Heatmap(
@@ -159,26 +168,36 @@ def main():
                 for t in timesteps
             ]
         }],
+
         updatemenus=[{
             "type": "buttons",
             "buttons": [
                 {
                     "label": "Play",
                     "method": "animate",
-                    "args": [None, {"frame": {"duration": 300, "redraw": True}, "fromcurrent": True}]
+                    "args": [None, {
+                        "mode": "immediate",
+                        "transition": {"duration": 0},
+                        "frame": {"duration": 300, "redraw": True}
+                    }]
                 },
                 {
                     "label": "Pause",
                     "method": "animate",
-                    "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]
+                    "args": [[None], {
+                        "mode": "immediate",
+                        "transition": {"duration": 0},
+                        "frame": {"duration": 0, "redraw": False}
+                    }]
                 }
             ]
         }]
     )
 
     # fig.show()
+    print("About to show figure. If running in a non-interactive environment, this may not work. Instead, we will save to HTML.")
     out_html = "visualization.html"
-    fig.write_html(out_html, auto_open=False)
+    fig.write_html(out_html, auto_open=False, auto_play=False)
     print(f"Wrote {out_html}")
 
 
