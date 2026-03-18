@@ -1,3 +1,7 @@
+**Pipeline:** raw output (CSV/log) → **Parser** → NPZ + run.json → **Validator** → **Plotly script** → visualization.html
+
+---
+
 Raw simulation files
 
 What the simulator gives you
@@ -14,7 +18,7 @@ run.json
 
 The explanation of what that data means
 
-Validator
+Validator 
 
 Sanity check
 

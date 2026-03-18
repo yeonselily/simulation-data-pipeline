@@ -238,8 +238,10 @@ def main():
     grids = data["grids"]
     print(f"Loaded NPZ with timesteps {timesteps.shape} and grids {grids.shape}")
 
-    # Detect optional Tuberculosis multi-channel grids
-    is_tb = cfg["run"].get("app_name", "").lower().startswith("tuberculosis")
+    # Detect application type
+    app_name = cfg["run"].get("app_name", "").lower()
+    is_tb = app_name.startswith("tuberculosis")
+    is_heat2d = app_name.startswith("heat2d")
     chemokine = data["chemokine"] if ("chemokine" in data and is_tb) else None
     bacteria = data["bacteria"] if ("bacteria" in data and is_tb) else None
     macrophage = data["macrophage"] if ("macrophage" in data and is_tb) else None
@@ -265,40 +267,55 @@ def main():
     zmin = float(cfg["run"].get("value_range", {}).get("min", np.nanmin(grids)))
     zmax = float(cfg["run"].get("value_range", {}).get("max", np.nanmax(grids)))
 
+    # Label for scalar field in hover (e.g., "Temperature", "Chemokine level")
+    value_label = cfg["run"].get("state_semantics", "value")
+
     frames = []
     for i, t in enumerate(timesteps):
         # Choose heatmap styling:
-        # - For Tuberculosis, use discrete 0/1/2 -> gray/orange/red
-        # - For other apps, fall back to a generic continuous colorscale
+        # - For Tuberculosis, use discrete 0/1/2 -> gray/orange/red with fixed range
+        # - For Heat2D, let Plotly auto-scale per frame (match original Heat2D viz)
+        # - For other apps, use a generic continuous colorscale with global zmin/zmax
+        heatmap_kwargs = {
+            "z": grids[i],
+            "hovertemplate": f"x: %{{x}}<br>y: %{{y}}<br>{value_label}: %{{z}}<extra></extra>",
+        }
+
         if is_tb and chemokine is not None:
-            colorscale = [
-                [0.0, "rgb(230,230,230)"],
-                [0.4999, "rgb(230,230,230)"],
-                [0.5, "rgb(255,140,0)"],
-                [0.8333, "rgb(255,140,0)"],
-                [0.8334, "rgb(255,0,0)"],
-                [1.0, "rgb(255,0,0)"],
-            ]
-            colorbar = dict(
-                title=cfg["run"].get("state_semantics", "Value"),
-                tickmode="array",
-                tickvals=[0, 1, 2],
+            heatmap_kwargs.update(
+                colorscale=[
+                    [0.0, "rgb(230,230,230)"],
+                    [0.4999, "rgb(230,230,230)"],
+                    [0.5, "rgb(255,140,0)"],
+                    [0.8333, "rgb(255,140,0)"],
+                    [0.8334, "rgb(255,0,0)"],
+                    [1.0, "rgb(255,0,0)"],
+                ],
+                colorbar=dict(
+                    title=cfg["run"].get("state_semantics", "Value"),
+                    tickmode="array",
+                    tickvals=[0, 1, 2],
+                ),
+                zmin=zmin,
+                zmax=zmax,
+                showscale=True,
             )
-        else:
-            heatmap_kwargs = dict(
+        elif is_heat2d:
+            # Per-frame autoscale, no fixed zmin/zmax
+            heatmap_kwargs.update(
                 colorbar=dict(title=cfg["run"].get("state_semantics", "Value")),
                 showscale=True,
             )
-
-        traces = [
-            go.Heatmap(
-                z=grids[i],
+        else:
+            heatmap_kwargs.update(
+                colorscale="Viridis",
+                colorbar=dict(title=cfg["run"].get("state_semantics", "Value")),
                 zmin=zmin,
                 zmax=zmax,
-                hovertemplate="x: %{x}<br>y: %{y}<br>value: %{z}<extra></extra>",
-                **heatmap_kwargs
+                showscale=True,
             )
-        ]
+
+        traces = [go.Heatmap(**heatmap_kwargs)]
 
         if use_entities:
             traces.append(make_agent_trace(entities_by_t.get(int(t), [])))
@@ -322,34 +339,42 @@ def main():
     print(f"Constructed {len(frames)} frames for animation")
 
     # Same heatmap styling for the initial frame as in the animation frames
-    if is_tb and chemokine is not None:
-        init_colorscale = [
-            [0.0, "rgb(230,230,230)"],
-            [0.4999, "rgb(230,230,230)"],
-            [0.5, "rgb(255,140,0)"],
-            [0.8333, "rgb(255,140,0)"],
-            [0.8334, "rgb(255,0,0)"],
-            [1.0, "rgb(255,0,0)"],
-        ]
-        init_colorbar = dict(
-            title=cfg["run"].get("state_semantics", "Value"),
-            tickmode="array",
-            tickvals=[0, 1, 2],
-        )
-    else:
-        init_colorscale = "Viridis"
-        init_colorbar = dict(title=cfg["run"].get("state_semantics", "Value"))
+    init_heatmap_kwargs = {
+        "z": grids[0],
+        "hovertemplate": f"x: %{{x}}<br>y: %{{y}}<br>{value_label}: %{{z}}<extra></extra>",
+    }
 
-    initial_traces = [
-        go.Heatmap(
-            z=grids[0],
+    if is_tb and chemokine is not None:
+        init_heatmap_kwargs.update(
+            colorscale=[
+                [0.0, "rgb(230,230,230)"],
+                [0.4999, "rgb(230,230,230)"],
+                [0.5, "rgb(255,140,0)"],
+                [0.8333, "rgb(255,140,0)"],
+                [0.8334, "rgb(255,0,0)"],
+                [1.0, "rgb(255,0,0)"],
+            ],
+            colorbar=dict(
+                title=cfg["run"].get("state_semantics", "Value"),
+                tickmode="array",
+                tickvals=[0, 1, 2],
+            ),
             zmin=zmin,
             zmax=zmax,
-            colorscale=init_colorscale,
-            colorbar=init_colorbar,
-            hovertemplate="x: %{x}<br>y: %{y}<br>value: %{z}<extra></extra>",
         )
-    ]
+    elif is_heat2d:
+        init_heatmap_kwargs.update(
+            colorbar=dict(title=cfg["run"].get("state_semantics", "Value")),
+        )
+    else:
+        init_heatmap_kwargs.update(
+            colorscale="Viridis",
+            colorbar=dict(title=cfg["run"].get("state_semantics", "Value")),
+            zmin=zmin,
+            zmax=zmax,
+        )
+
+    initial_traces = [go.Heatmap(**init_heatmap_kwargs)]
 
     if use_entities:
         initial_traces.append(make_agent_trace(entities_by_t.get(int(timesteps[0]), [])))
