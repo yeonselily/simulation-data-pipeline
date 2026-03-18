@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "run": {
+    "app_name": "Tuberculosis",
+    "framework": "MASS",
+    "backend": "CUDA",
+    "dimensions": {
+      "type": "grid2d",
+      "width": 40,
+      "height": 40
+    },
+    "value_type": "int32",
+    "value_range": {
+      "min": 0,
+      "max": 2
+    },
+    "timesteps": {
+      "start": 0,
+      "end": 100,
+      "count": 101
+    },
+    "state_type": "grid2d_multi_channel",
+    "state_semantics": "Chemokine level",
+    "overlay_semantics": [
+      "Bacteria",
+      "Macrophage",
+      "Macrophage state",
+      "T-cell",
+      "Blood vessel"
+    ],
+    "notes": "META declares timesteps=101, outputInterval=1, tcellEntrance=10. Parsed 101 GRID frames.",
+    "chemokine_max": 2,
+    "output_interval": 1,
+    "tcell_entrance": 10,
+    "channels": {
+      "chemokine": {
+        "dtype": "int",
+        "range": [
+          0,
+          2
+        ],
+        "label": "Chemokine level"
+      },
+      "bacteria": {
+        "dtype": "int",
+        "values": [
+          0,
+          1
+        ],
+        "label": "Bacteria"
+      },
+      "macrophage": {
+        "dtype": "int",
+        "values": [
+          0,
+          1
+        ],
+        "label": "Macrophage"
+      },
+      "macrophageState": {
+        "dtype": "int",
+        "values": [
+          -1,
+          0,
+          1,
+          2,
+          3
+        ],
+        "label": "Macrophage state"
+      },
+      "tcell": {
+        "dtype": "int",
+        "values": [
+          0,
+          1
+        ],
+        "label": "T-cell"
+      },
+      "bloodVessel": {
+        "dtype": "int",
+        "values": [
+          0,
+          1
+        ],
+        "label": "Blood vessel"
+      }
+    }
+  },
+  "input": {
+    "folder": "tb_csv",
+    "meta_csv": "tb_csv/META.csv"
+  },
+  "outputs": {
+    "grid_npz": "state.npz",
+    "grid_long_csv": "grid_long.csv",
+    "entities_csv": "",
+    "metrics_csv": "",
+    "viz_params_csv": ""
+  },
+  "visualization": {
+    "frame_stride": 1,
+    "show_entities": false,
+    "show_metrics": false
+  }
+}

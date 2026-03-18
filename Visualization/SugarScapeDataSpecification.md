@@ -8,13 +8,19 @@ The visualization layer should not perform any additional simulation logic or de
 
 # Grid
 
-**Agent ID and Sugar Count for each grid cell**.
+**Sugar count for each grid cell**.
 **Maximum Grid Size Possible: 1000x1000**
 ## Format
-LIBRARY_RUN#(Zero-padded to 6)_TIMESTEP(Zero-padded to 6)_GRID.csv
+PREFIX_TIMESTAMP_TIMESTEP(Zero-padded to 6)_GRID.csv
+
+- `PREFIX`: implementation/library identifier (e.g. `SERIAL`, `CUDA`, `CILK`)
+- `TIMESTAMP`: wall-clock timestamp of the run in the form `HHMMSSDDMMYYYY` using
+  - `HHMMSS` = 24‑hour time (hours, minutes, seconds)
+  - `DDMMYYYY` = day, month, year
 
 **Example**  
-CILK_000001_000001_GRID.csv
+`SERIAL_18184509032026_000000_GRID.csv`  
+Here `18184509032026` represents `18:18:45` on `09/03/2026` and `000000` is the timestep index.
 
 ## Data in File
 row,col,sugarCount
@@ -28,10 +34,12 @@ row,col,sugarCount
 # Agents
 
 ## Format
-LIBRARY_RUN#(Zero-padded to 6)_TIMESTEP(Zero-padded to 6)_AGENT.csv
+PREFIX_TIMESTAMP_TIMESTEP(Zero-padded to 6)_AGENT.csv
+
+The `PREFIX` and `TIMESTAMP` parts follow the same rules as the grid files above.
 
 **Example**  
-CILK_000001_000001_AGENT.csv
+`SERIAL_18184509032026_000000_AGENT.csv`
 
 ## Data in File
 agentID,row,col,wealth,age,deathAge,isMale,isFertile
@@ -51,8 +59,7 @@ agentID,row,col,wealth,age,deathAge,isMale,isFertile
 
 # Specific Visualizations
 
-- If agent is fertile (isFertile = 1), a heart should be displayed on the agent model, blue if male, red if female  
-- If the agent is NOT fertile (isFertile = 0), the heart as described above should be greyed out with the sex’s respective color outline  
+- Fertility and sex are encoded via the **color of each agent marker** in the Plotly visualization; no additional icon (e.g., a heart overlay) is currently used.  
 
 ---
 
@@ -61,10 +68,12 @@ agentID,row,col,wealth,age,deathAge,isMale,isFertile
 Contains constants (Properties set once and never changed)
 
 ## Format
-LibraryName_RUN#(0-padded size 6)_META.csv
+PREFIX_TIMESTAMP_META.csv
+
+The `PREFIX` and `TIMESTAMP` parts follow the same rules as the grid and agent files.
 
 **Example**  
-CILK_000001_META.csv
+`SERIAL_18184509032026_META.csv`
 
 ## Data in File
 Height,width,timesteps,growthRate,sugarCapacityMin,sugarCapacityMax,initialAgentCount,metabolismMin,metabolismMax,visionMin,visionMax,deathAgeMin,deathAgeMax,fertilityAgeMin,fertilityAgeMax,reproThreshold,inheritanceFraction,initialWealth,seedSugar,seedMetabolism,seedVision,seedCoord,seedAge,seedSex,seedWealth
@@ -92,7 +101,9 @@ Height,width,timesteps,growthRate,sugarCapacityMin,sugarCapacityMax,initialAgent
 Variables that don’t belong to grid or agent files, but still matter. Essentially, data gathered from grid and agent data.
 
 ## Format
-LibraryName_RUN#(0-padded size 6)_TIMESTEP(0-padded size 6)_TIMESTEPCONSTANTS.csv
+PREFIX_TIMESTAMP_TIMESTEPCONSTANTS.csv
+
+The `PREFIX` and `TIMESTAMP` parts follow the same rules as the other files.
 
 ## Data in File
 timestep,liveAgentCount,birthCount,deathCount,totalWealth,averageWealth,totalSugarOnGrid,conflictCount,meanVision,meanMetabolism,sexRatio,fertileCount,giniWealth
@@ -114,15 +125,3 @@ timestep,liveAgentCount,birthCount,deathCount,totalWealth,averageWealth,totalSug
 
 ---
 
-# Visualization Parameters
-
-## Format
-visualization_parameters.csv
-
-## Data in File
-gradientStartHex,gradientEndHex,showGridLine,gridLineHex,gridLineThickness
-
-## Notes
-- gradientStartHex & gradientEndHex define the range of the gradient used for visualizing the sugar count of the grid cells, where startHex is the cell color for minimum sugar, and endHex is for the cell with the most sugar  
-- showGridLine is a boolean that determines whether the grid lines should be visible or not  
-- gridLineHex & gridLineThickness determine the color and the thickness of the grid lines  
