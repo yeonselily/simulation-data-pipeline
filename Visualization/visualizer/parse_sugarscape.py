@@ -12,12 +12,17 @@ Transforms many raw SugarScape CSV files into a smaller, standardized visualizat
 INPUT_DIR = "../input_files"
 RUN_JSON_PATH = "run.json"
 
-# Supports both:
+# Supports both legacy and timestamped names, e.g.:
 #   serial_META.csv
 #   CILK_000001_META.csv
-META_RE = re.compile(r"^(?P<prefix>.+?)(?:_(?P<run>\d{6}))?_META\.csv$")
-GRID_RE = re.compile(r"^(?P<prefix>.+?)(?:_(?P<run>\d{6}))?_(?P<timestep>\d{6})_GRID\.csv$")
-AGENT_RE = re.compile(r"^(?P<prefix>.+?)(?:_(?P<run>\d{6}))?_(?P<timestep>\d{6})_AGENT\.csv$")
+#   SERIAL_18184509032026_META.csv
+#
+# For GRID / AGENT:
+#   PREFIX_<optional tag>_TTTTTT_GRID/AGENT.csv
+# where <tag> may be a run number or a timestamp.
+META_RE = re.compile(r"^(?P<prefix>.+?)(?:_(?P<tag>\d+))?_META\.csv$")
+GRID_RE = re.compile(r"^(?P<prefix>.+?)(?:_(?P<tag>\d+))?_(?P<timestep>\d{6})_GRID\.csv$")
+AGENT_RE = re.compile(r"^(?P<prefix>.+?)(?:_(?P<tag>\d+))?_(?P<timestep>\d{6})_AGENT\.csv$")
 
 def list_real_csvs(folder: Path):
     return [p for p in folder.glob("*.csv") if not p.name.startswith("._")]
@@ -33,7 +38,7 @@ def detect_sugarscape_files(folder: Path):
     files = list_real_csvs(folder)
     meta = None
     prefix = None
-    run = None
+    tag = None
     grid_by_t = {}
     agent_by_t = {}
 
@@ -43,7 +48,7 @@ def detect_sugarscape_files(folder: Path):
         if m:
             meta = p
             prefix = m.group("prefix")
-            run = m.group("run")  # may be None
+            tag = m.group("tag")  # may be None (legacy serial_META.csv)
             break
 
     if meta is None:
@@ -54,8 +59,8 @@ def detect_sugarscape_files(folder: Path):
         mg = GRID_RE.match(p.name)
         if mg:
             same_prefix = (mg.group("prefix") == prefix)
-            same_run = (mg.group("run") == run)  # works even if both None
-            if same_prefix and same_run:
+            same_tag = (mg.group("tag") == tag)  # works even if both None
+            if same_prefix and same_tag:
                 t = int(mg.group("timestep"))
                 grid_by_t[t] = p
             continue
@@ -63,8 +68,8 @@ def detect_sugarscape_files(folder: Path):
         ma = AGENT_RE.match(p.name)
         if ma:
             same_prefix = (ma.group("prefix") == prefix)
-            same_run = (ma.group("run") == run)
-            if same_prefix and same_run:
+            same_tag = (ma.group("tag") == tag)
+            if same_prefix and same_tag:
                 t = int(ma.group("timestep"))
                 agent_by_t[t] = p
             continue
@@ -75,7 +80,7 @@ def detect_sugarscape_files(folder: Path):
     timesteps = sorted(grid_by_t.keys())
     return {
         "prefix": prefix,
-        "run": run,
+        "tag": tag,
         "meta_csv": meta,
         "grid_by_t": grid_by_t,
         "agent_by_t": agent_by_t,
@@ -144,7 +149,7 @@ def export_entities_long_csv(agent_by_t, out_csv):
                     })
     return True
 
-def write_run_json(meta_row, timesteps, input_dir, meta_csv_name, outputs, prefix, run, agent_exists):
+def write_run_json(meta_row, timesteps, input_dir, meta_csv_name, outputs, prefix, tag, agent_exists):
     height = int(float(meta_row["Height"]))
     width = int(float(meta_row["width"]))
     total_timesteps_declared = int(float(meta_row["timesteps"]))
@@ -172,7 +177,7 @@ def write_run_json(meta_row, timesteps, input_dir, meta_csv_name, outputs, prefi
             "folder": str(input_dir),
             "meta_csv": str(Path(input_dir) / meta_csv_name),
             "prefix": prefix,
-            "run_id": run if run is not None else ""
+            "run_id": tag if tag is not None else ""
         },
         "outputs": outputs,
         "visualization": {
@@ -193,7 +198,7 @@ def main():
 
     detected = detect_sugarscape_files(folder)
     prefix = detected["prefix"]
-    run = detected["run"]
+    tag = detected["tag"]
     meta_csv = detected["meta_csv"]
     grid_by_t = detected["grid_by_t"]
     agent_by_t = detected["agent_by_t"]
@@ -228,12 +233,18 @@ def main():
     else:
         print("No AGENT files found; skipped entities export.")
 
+    # Optional metrics and viz params (currently not required by the visualization)
+    metrics_path = None
+    for cand in folder.glob(f"{prefix}_*_TIMESTEPCONSTANTS.csv"):
+        metrics_path = cand
+        break
+
     outputs = {
         "grid_npz": out_npz,
         "grid_long_csv": out_grid_long,
         "entities_csv": out_entities if agent_exists else "",
-        "metrics_csv": "metrics.csv" if (folder / f"{prefix}_TIMESTEPCONSTANTS.csv").exists() else "",
-        "viz_params_csv": str(folder / "visualization_parameters.csv") if (folder / "visualization_parameters.csv").exists() else ""
+        "metrics_csv": "metrics.csv" if metrics_path is not None else "",
+        "viz_params_csv": ""
     }
 
     write_run_json(
@@ -243,7 +254,7 @@ def main():
         meta_csv_name=meta_csv.name,
         outputs=outputs,
         prefix=prefix,
-        run=run,
+        tag=tag,
         agent_exists=agent_exists
     )
 
