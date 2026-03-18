@@ -42,9 +42,9 @@ This allows the same script to support:
     - grid + agents simulations (e.g., SugarScape)
 
 What it does not yet support:
-    - fertility heart icons as separate symbols
-    - side metrics from TIMESTEPCONSTANTS
-    - grid line styling / color gradients from visualization_parameters.csv
+    - fertility heart icons or other custom per-agent glyphs
+    - rendering side metrics from TIMESTEPCONSTANTS
+    - external visualization parameter files (e.g., gradient presets) beyond the built-in defaults
     - richer legend / styling rules beyond the current built-in agent coloring
 '''
 
